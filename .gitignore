@@ -1,5 +1,8 @@
-# Archivo de entorno
+# Ignora cualquier archivo .env en cualquier lugar
 .env
 
-# Otros archivos de sistema/logs que quizás vaya a usar
-*.log
+# Ignora el archivo .env dentro de la carpeta backend/
+backend/.env
+
+
+node_modules/
