@@ -1,48 +1,70 @@
-# backend/app/api/endpoints/clients.py (Código Refactorizado)
+# backend/app/api/endpoints/client.py
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from typing import List
 
-# Importar la función de dependencia de la DB
+# Importaciones de tu sistema
+from app.api.endpoints.auth import get_current_user # Dependencia de autenticación
 from app.db.session import get_db
-
-# Importar los esquemas Pydantic y el nuevo servicio
-from app.schemas.client import Client, ClientCreate
+from app.db.models.user import User as DBUser
+from app.db.models.client import Client as DBClient
 from app.services.client_service import ClientService
+from app.schemas.client import Client, ClientCreate
 
 router = APIRouter()
 
-# --- Endpoint para CREAR un Cliente ---
-@router.post("/", response_model=Client, status_code=status.HTTP_201_CREATED)
-def create_new_client(client_in: ClientCreate, db: Session = Depends(get_db)):
-    """
-    Crea un nuevo cliente usando la capa de servicio.
-    """
-    # 1. Crear la instancia del servicio de cliente
-    client_service = ClientService(db)
+# =================================================================
+# ENDPOINT 1: CREAR NUEVO CLIENTE (Ruta Protegida)
+# =================================================================
 
-    # 2. Lógica de negocio/validación: Verificar si ya existe
-    existing_client = client_service.get_by_identification(client_in.identification_number)
+@router.post("/", response_model=Client, status_code=status.HTTP_201_CREATED)
+def create_client(
+    client_in: ClientCreate, 
+    db: Session = Depends(get_db),
+    current_user: DBUser = Depends(get_current_user) # 🔑 Protección de la ruta
+):
+    """
+    Crea un nuevo cliente asociado al usuario (vendedor) autenticado.
+    Verifica que no exista otro cliente del mismo vendedor con el mismo NIT/ID.
+    """
+    client_service = ClientService(db)
+    
+    # 1. Verificar si el cliente ya existe para este vendedor (Multi-tenancy check)
+    existing_client = client_service.get_by_identification(
+        identification_number=client_in.identification_number,
+        owner=current_user
+    )
     
     if existing_client:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Ya existe un cliente con este número de identificación.",
+            detail="Ya existe un cliente con esta identificación registrado por usted."
         )
-    
-    # 3. Llamar al método del servicio para crear en la DB
-    db_client = client_service.create(client_in)
+        
+    # 2. Crear y guardar el cliente
+    db_client = client_service.create(client_in=client_in, owner=current_user)
     
     return db_client
 
 
-# --- Endpoint para OBTENER todos los Clientes ---
+# =================================================================
+# ENDPOINT 2: OBTENER LISTA DE CLIENTES (Ruta Protegida)
+# =================================================================
+
 @router.get("/", response_model=List[Client])
-def read_clients(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+def read_clients(
+    db: Session = Depends(get_db),
+    current_user: DBUser = Depends(get_current_user), # 🔑 Protección de la ruta
+    skip: int = Query(0, description="Número de registros a saltar (paginación)"),
+    limit: int = Query(100, description="Límite de registros a devolver"),
+):
     """
-    Obtiene una lista de clientes usando la capa de servicio.
+    Obtiene la lista de clientes creados por el usuario (vendedor) autenticado.
     """
     client_service = ClientService(db)
-    clients = client_service.get_all(skip=skip, limit=limit)
+    
+    clients = client_service.get_multi(owner=current_user, skip=skip, limit=limit)
+    
+    # Nota: El servicio ya aplica el filtro de 'owner_id'
     return clients

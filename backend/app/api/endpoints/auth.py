@@ -4,12 +4,13 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 from typing import Optional
+# Importamos User, UserRegister (para registro) y UserCreate (para uso interno/admin)
+from app.schemas.user import User, UserRegister, UserCreate 
 
 from app.db.session import get_db
 from app.db.models.user import User as DBUser
-from app.schemas.user import User, UserCreate # Importamos User y UserCreate
-from app.schemas.token import Token, TokenData
-from app.services.user_service import UserService
+from app.schemas.token import Token, TokenData # Asumo que este esquema existe
+from app.services.user_service import UserService # Asumo que este servicio existe
 from app.utils.security import verify_password
 from app.utils.jwt import create_access_token, verify_access_token
 from app.core.config import ACCESS_TOKEN_EXPIRE_SECONDS
@@ -60,13 +61,13 @@ def login_for_access_token(
 
 
 # =================================================================
-# ENDPOINT 2: CREACIÓN de Usuario (Ruta protegida o abierta según la app)
+# ENDPOINT 2: CREACIÓN de Usuario (REGISTRO PÚBLICO)
 # =================================================================
 
 @router.post("/register", response_model=User, status_code=status.HTTP_201_CREATED)
-def register_new_user(user_in: UserCreate, db: Session = Depends(get_db)):
+def register_new_user(user_in: UserRegister, db: Session = Depends(get_db)): # 🔑 CORREGIDO: Ahora usa UserRegister
     """
-    Crea un nuevo usuario en el sistema.
+    Crea un nuevo usuario en el sistema con el esquema de registro mínimo.
     """
     user_service = UserService(db)
     
@@ -78,7 +79,9 @@ def register_new_user(user_in: UserCreate, db: Session = Depends(get_db)):
         )
         
     # 2. Crear y guardar el usuario
-    db_user = user_service.create(user_in)
+    # El servicio (UserService.create) debe encargarse de asignar el rol ('VENDEDOR') 
+    # y el estado ('is_active=True') por defecto, ya que no vienen en user_in.
+    db_user = user_service.create(user_in) 
     
     return db_user
 

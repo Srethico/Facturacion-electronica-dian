@@ -1,28 +1,36 @@
 # backend/app/schemas/client.py
 
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 from typing import Optional
 
-# --- Schema Base para la Creación (Datos de Entrada) ---
-class ClientCreate(BaseModel):
-    # Campos obligatorios para crear un cliente
-    identification_number: str
-    type_identification: str  # Código DIAN (e.g., '31' para NIT)
-    business_name: str
-    fiscal_responsibility_code: str = "R-99-PN" # Valor por defecto común
-    address: str
-    city_code: str # Código DANE
-    email: Optional[EmailStr] = None 
+# ----------------------------------------
+# 1. Esquema Base (Campos Comunes)
+# ----------------------------------------
+class ClientBase(BaseModel):
+    identification_type: str = Field(..., max_length=5, description="Tipo de identificación (ej. NIT, C.C.)")
+    identification_number: str = Field(..., max_length=20, description="Número de identificación o NIT")
+    name: str = Field(..., max_length=150, description="Razón social o nombre completo del cliente")
+    email: Optional[EmailStr] = None
+    address: Optional[str] = None
     phone: Optional[str] = None
+    # Código fiscal (Responsabilidad ante la DIAN)
+    fiscal_responsibility_code: Optional[str] = Field("R-99-PN", max_length=10, description="Código de responsabilidad fiscal (e.g., R-99-PN para Persona Natural)")
+    city_code: Optional[str] = Field(None, max_length=10, description="Código DANE de la ciudad")
+
+# ----------------------------------------
+# 2. Esquema de Creación (Datos de Entrada)
+# ----------------------------------------
+class ClientCreate(ClientBase):
+    pass
+    # No agregamos campos aquí, ya que ClientBase define la entrada completa.
+
+# ----------------------------------------
+# 3. Esquema de Respuesta (Datos de Salida)
+# ----------------------------------------
+class Client(ClientBase):
+    id: int
+    # Relación con el usuario que lo creó (para auditoría y multi-tenancy)
+    owner_id: int 
 
     class Config:
-        # Permite que Pydantic lea los campos por nombre aunque sean de SQLAlchemy
-        from_attributes = True
-
-# --- Schema para la Respuesta (Datos de Salida) ---
-class Client(ClientCreate):
-    id: int
-    is_active: bool
-    
-    # Esto asegura que la clase Client se mantenga limpia para la API.
-    # No es necesario agregar más si ya está en ClientCreate.
+        from_attributes = True # Permite mapeo desde el modelo SQLAlchemy (DB)

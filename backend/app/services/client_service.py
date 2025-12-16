@@ -3,52 +3,79 @@
 from sqlalchemy.orm import Session
 from typing import List, Optional
 
-# Importar los modelos (tablas) de SQLAlchemy y los esquemas de Pydantic
 from app.db.models.client import Client as DBClient
-from app.schemas.client import ClientCreate, Client as ClientSchema # Renombramos Client para evitar confusión
+from app.db.models.user import User as DBUser # Necesario para el tipado del owner
+from app.schemas.client import ClientCreate # Necesario para la entrada de datos
 
-# Definición de la clase de servicio que encapsula la lógica de la BD
 class ClientService:
     """
-    Clase de servicio que maneja todas las operaciones CRUD para el modelo Client.
+    Servicio de lógica de negocio para la gestión de Clientes (Terceros).
     """
     def __init__(self, db: Session):
-        # La sesión de la BD es inyectada en la instancia de servicio
         self.db = db
 
-    # ------------------ CREAR (CREATE) ------------------
+    # =================================================================
+    # CREACIÓN (CREATE)
+    # =================================================================
+    
+    def create(self, client_in: ClientCreate, owner: DBUser) -> DBClient:
+        """
+        Crea un nuevo cliente asociado al usuario (vendedor) que lo está creando.
+        """
+        db_client = DBClient(
+            # Mapeo de campos desde el esquema de entrada (Pydantic)
+            identification_type=client_in.identification_type,
+            identification_number=client_in.identification_number,
+            name=client_in.name,
+            email=client_in.email,
+            address=client_in.address,
+            phone=client_in.phone,
+            fiscal_responsibility_code=client_in.fiscal_responsibility_code,
+            city_code=client_in.city_code,
+            
+            # Asignación del propietario (Owner ID)
+            owner_id=owner.id 
+        )
 
-    def create(self, client_in: ClientCreate) -> DBClient:
-        """Crea y guarda un nuevo cliente en la base de datos."""
-        
-        # 1. Creamos una instancia del modelo de la DB a partir de los datos Pydantic
-        db_client = DBClient(**client_in.model_dump())
-        
-        # 2. Agregamos, confirmamos y actualizamos la instancia para obtener el ID
         self.db.add(db_client)
         self.db.commit()
         self.db.refresh(db_client)
-        
         return db_client
 
-    # ------------------ LEER (READ) ------------------
+    # =================================================================
+    # LECTURA POR ID (READ)
+    # =================================================================
     
-    def get_by_id(self, client_id: int) -> Optional[DBClient]:
-        """Obtiene un cliente por su ID."""
-        return self.db.query(DBClient).filter(DBClient.id == client_id).first()
-    
-    def get_by_identification(self, identification_number: str) -> Optional[DBClient]:
-        """Obtiene un cliente por su NIT o Cédula."""
+    def get(self, client_id: int, owner: DBUser) -> Optional[DBClient]:
+        """
+        Obtiene un cliente por ID, verificando que pertenezca al usuario (owner).
+        """
         return self.db.query(DBClient).filter(
-            DBClient.identification_number == identification_number
+            DBClient.id == client_id, 
+            DBClient.owner_id == owner.id # Filtro de Multi-tenancy
         ).first()
 
-    def get_all(self, skip: int = 0, limit: int = 100) -> List[DBClient]:
-        """Obtiene una lista paginada de todos los clientes."""
-        return self.db.query(DBClient).offset(skip).limit(limit).all()
+    # =================================================================
+    # LISTADO (LIST)
+    # =================================================================
+    
+    def get_multi(self, owner: DBUser, skip: int = 0, limit: int = 100) -> List[DBClient]:
+        """
+        Obtiene una lista de clientes pertenecientes a un usuario específico.
+        """
+        return self.db.query(DBClient).filter(
+            DBClient.owner_id == owner.id
+        ).offset(skip).limit(limit).all()
 
-    # ------------------ ACTUALIZAR (UPDATE) ------------------
-    # (Opcional por ahora, pero esencial para CRUD completo)
-
-    # ------------------ ELIMINAR (DELETE) ------------------
-    # (Opcional por ahora, pero esencial para CRUD completo)
+    # =================================================================
+    # VERIFICACIÓN DE EXISTENCIA
+    # =================================================================
+    
+    def get_by_identification(self, identification_number: str, owner: DBUser) -> Optional[DBClient]:
+        """
+        Busca un cliente por número de identificación y Owner ID.
+        """
+        return self.db.query(DBClient).filter(
+            DBClient.identification_number == identification_number,
+            DBClient.owner_id == owner.id
+        ).first()
