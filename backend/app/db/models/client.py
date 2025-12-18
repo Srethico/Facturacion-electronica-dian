@@ -46,6 +46,7 @@ class Client(Base):
     # Relación con las facturas emitidas a este cliente
     # lazy='dynamic' permite cargar las facturas solo cuando son solicitadas
     invoices = relationship("Invoice", back_populates="client", lazy="dynamic")
+    invoices = relationship("Invoice", back_populates="client")
     
     # Método de representación para depuración
     def __repr__(self):

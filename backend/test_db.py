@@ -1,6 +1,4 @@
-from sqlalchemy import create_engine
-from app.core.config import settings
+from app.db.session import engine
 
-engine = create_engine(settings.DATABASE_URL)
 with engine.connect() as conn:
-    print("🔥 Conectado a PostgreSQL")
+    print("😎♠️ Conexión exitosa a PostgreSQL")

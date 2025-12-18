@@ -8,6 +8,37 @@ from app.db.base import Base
 
 
 
+
+# 1. MODELO DE LÍNEA DE DETALLE (INVOICE ITEM)
+# =================================================================
+
+class InvoiceItem(Base):
+    """
+    Representa una línea de detalle dentro de una Factura Electrónica.
+    """
+    __tablename__ = "invoice_items"
+
+    id = Column(Integer, primary_key=True, index=True)
+
+    # Relación con la Cabecera de Factura
+    invoice_id = Column(Integer, ForeignKey("invoices.id"), nullable=False)
+    invoice = relationship("Invoice", back_populates="items") # <-- Conecta con la cabecera
+
+    # Detalles del Item (Producto/Servicio)
+    product_code = Column(String(50), index=True, nullable=False)
+    description = Column(String(255), nullable=False)
+    quantity = Column(Float, nullable=False)
+    unit_price = Column(Float, nullable=False)
+    
+    # Cálculos de Impuestos para este item
+    base_amount = Column(Float, nullable=False) # Cantidad * Precio Unitario
+    tax_rate = Column(Float, default=0.19, nullable=False) # Tasa de IVA (ej: 0.19 para 19%)
+    tax_amount = Column(Float, nullable=False) # base_amount * tax_rate
+    
+    # Total de la línea (base_amount + tax_amount)
+    line_total = Column(Float, nullable=False)
+
+
 # =================================================================
 # 2. MODELO DE CABECERA DE FACTURA (INVOICE)
 # =================================================================

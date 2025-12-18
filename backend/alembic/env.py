@@ -1,45 +1,80 @@
-import os
-import sys
 from logging.config import fileConfig
 from sqlalchemy import engine_from_config, pool
 from alembic import context
+import os
+import sys
 
-# --- INICIO DEL CÓDIGO AÑADIDO PARA LA RUTA DE IMPORTACIÓN ---
-# Esto añade la carpeta 'backend' al PYTHONPATH para que la importación 'from app...' funcione.
-# Obtenemos la ruta del directorio donde se encuentra este script (alembic/env.py)
-current_dir = os.path.dirname(os.path.abspath(__file__))
-# Subimos un nivel para obtener la ruta de la carpeta 'backend'
-backend_dir = os.path.join(current_dir, "..")
-# Añadimos 'backend' a la ruta de búsqueda de módulos de Python
-sys.path.append(backend_dir)
-# --- FIN DEL CÓDIGO AÑADIDO ---
+# --------------------------------------------------
+# Alembic Config
+# --------------------------------------------------
 
-
-from app.db.base import Base  # Esta línea ahora debería funcionar
-# tu Base declarativa
-
-# esto carga el archivo alembic.ini
 config = context.config
-fileConfig(config.config_file_name)
+
+if config.config_file_name is not None:
+    fileConfig(config.config_file_name)
+
+# --------------------------------------------------
+# Add app to PYTHONPATH
+# --------------------------------------------------
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
+# --------------------------------------------------
+# Import metadata
+# --------------------------------------------------
+
+from app.core.settings import settings
+from app.db.base import Base
+from app.db.models import *  # noqa
 
 target_metadata = Base.metadata
 
-def run_migrations_offline():
-    url = config.get_main_option("sqlalchemy.url")
-    context.configure(url=url, target_metadata=target_metadata, literal_binds=True)
+# --------------------------------------------------
+# Offline migrations
+# --------------------------------------------------
+
+
+def run_migrations_offline() -> None:
+    context.configure(
+        url=settings.DATABASE_URL,
+        target_metadata=target_metadata,
+        literal_binds=True,
+        dialect_opts={"paramstyle": "named"},
+    )
+
     with context.begin_transaction():
         context.run_migrations()
 
-def run_migrations_online():
+
+# --------------------------------------------------
+# Online migrations
+# --------------------------------------------------
+
+
+def run_migrations_online() -> None:
     connectable = engine_from_config(
-        config.get_section(config.config_ini_section),
-        prefix='sqlalchemy.',
-        poolclass=pool.NullPool
+        {
+            "sqlalchemy.url": settings.DATABASE_URL
+        },
+        prefix="sqlalchemy.",
+        poolclass=pool.NullPool,
     )
+
     with connectable.connect() as connection:
-        context.configure(connection=connection, target_metadata=target_metadata)
+        context.configure(
+            connection=connection,
+            target_metadata=target_metadata,
+            compare_type=True,        # detecta cambios de tipo
+            compare_server_default=True,
+        )
+
         with context.begin_transaction():
             context.run_migrations()
+
+
+# --------------------------------------------------
+# Run
+# --------------------------------------------------
 
 if context.is_offline_mode():
     run_migrations_offline()

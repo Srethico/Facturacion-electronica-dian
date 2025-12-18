@@ -1,7 +1,4 @@
 # backend/app/db/models/__init__.py (Actualizado)
-
-from .client import Client 
-from .user import User  
-from .product import Product 
-from .invoice import Invoice 
-from .invoice_item import InvoiceItem
+from app.db.models.user import User
+from app.db.models.refresh_token import RefreshToken
+from app.db.models.audit_log import AuditLog
