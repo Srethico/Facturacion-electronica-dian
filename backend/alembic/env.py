@@ -4,6 +4,8 @@ from alembic import context
 import os
 import sys
 
+
+
 # --------------------------------------------------
 # Alembic Config
 # --------------------------------------------------
@@ -26,6 +28,8 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from app.core.settings import settings
 from app.db.base import Base
 from app.db.models import *  # noqa
+from app.modules.products.models import Product  # noqa
+
 
 target_metadata = Base.metadata
 

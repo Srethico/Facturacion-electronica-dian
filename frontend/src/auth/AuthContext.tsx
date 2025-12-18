@@ -1,4 +1,15 @@
-import { createContext } from "react"
-import type { AuthContextType } from "./auth.types"
+import { createContext } from "react";
 
-export const AuthContext = createContext<AuthContextType | null>(null)
+export interface User {
+  id: number;
+  email: string;
+  role: string;
+}
+
+export interface AuthContextType {
+  user: User | null;
+  login: (email: string, password: string) => Promise<void>;
+  logout: () => void;
+}
+
+export const AuthContext = createContext<AuthContextType | null>(null);

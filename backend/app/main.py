@@ -7,6 +7,7 @@ from app.api.v1.api import api_router
 from app.core.security_headers import security_headers
 
 
+
 def create_application() -> FastAPI:
     configure_logging(settings.DEBUG)
 

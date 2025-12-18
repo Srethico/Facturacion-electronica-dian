@@ -1,28 +1,47 @@
 import { useEffect, useState } from "react";
 import { AuthContext } from "./AuthContext";
 import type { User } from "./auth.types";
-import api from "../api/axios";
+import api from "../api/api";
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
+interface Props {
+  children: React.ReactNode;
+}
+
+export function AuthProvider({ children }: Props) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // =========================
+  // LOGIN REAL (JWT)
+  // =========================
   const login = async (email: string, password: string) => {
-    const res = await api.post("/auth/login", { email, password });
-    localStorage.setItem("access_token", res.data.access_token);
+    try {
+      const res = await api.post("/auth/login", { email, password });
 
-    const me = await api.get<User>("/users/me");
-    setUser(me.data);
+      localStorage.setItem("access_token", res.data.access_token);
+
+      const me = await api.get<User>("/users/me");
+      setUser(me.data);
+    } catch (error) {
+      localStorage.removeItem("access_token");
+      throw error; // 👈 importante para mostrar error en UI
+    }
   };
 
+  // =========================
+  // LOGOUT
+  // =========================
   const logout = () => {
     localStorage.removeItem("access_token");
     setUser(null);
   };
 
-  // 👇 CARGA AUTOMÁTICA DE SESIÓN
+  // =========================
+  // CARGA AUTOMÁTICA DE SESIÓN
+  // =========================
   useEffect(() => {
     const token = localStorage.getItem("access_token");
+
     if (!token) {
       setLoading(false);
       return;
@@ -31,11 +50,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     api
       .get<User>("/users/me")
       .then((res) => setUser(res.data))
-      .catch(() => localStorage.removeItem("access_token"))
+      .catch(() => {
+        localStorage.removeItem("access_token");
+        setUser(null);
+      })
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <p>Cargando sesión...</p>;
+  // =========================
+  // RENDER
+  // =========================
+  if (loading) return null; // 👈 limpio y profesional
 
   return (
     <AuthContext.Provider value={{ user, login, logout }}>
