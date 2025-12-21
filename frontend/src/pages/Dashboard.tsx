@@ -1,16 +1,15 @@
-import { useAuth } from "../auth/useAuth";
+import Navbar from "../components/Navbar";
+import { Container, Typography } from "@mui/material";
 
-export function Dashboard() {
-  const { user, logout } = useAuth();
-
+export default function Dashboard() {
   return (
-    <div>
-      <h1 className="text-3xl font-bold text-blue-600">
-  Dashboard
-</h1>
-
-      <p>Bienvenido {user?.email}</p>
-      <button onClick={logout}>Cerrar sesión</button>
-    </div>
+    <>
+      <Navbar />
+      <Container sx={{ mt: 4 }}>
+        <Typography variant="h4">
+          Dashboard Administrativo
+        </Typography>
+      </Container>
+    </>
   );
 }

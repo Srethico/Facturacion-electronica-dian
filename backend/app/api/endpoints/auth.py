@@ -16,6 +16,41 @@ from app.utils.jwt import create_access_token, verify_access_token
 from app.core.config import ACCESS_TOKEN_EXPIRE_SECONDS
 from datetime import timedelta
 
+from app.schemas.auth import LoginRequest  # ⬅️ IMPORTANTE
+
+@router.post("/login", response_model=Token)
+def login_json(
+    data: LoginRequest,
+    db: Session = Depends(get_db)
+):
+    """
+    Login simple usando JSON (email + password).
+    Evita errores 422 por form-data.
+    """
+    user_service = UserService(db)
+
+    # 1. Buscar usuario por email
+    user = user_service.get_by_email(data.email)
+
+    # 2. Verificar credenciales
+    if not user or not verify_password(data.password, user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Credenciales incorrectas",
+        )
+
+    # 3. Crear token
+    access_token = create_access_token(
+        data={"sub": user.email, "role": user.role.name}
+    )
+
+    # 4. Responder
+    return {
+        "access_token": access_token,
+        "token_type": "bearer"
+    }
+
+
 router = APIRouter()
 
 # Define el esquema de seguridad: dónde espera la API encontrar el token

@@ -5,13 +5,6 @@ export interface Product {
   base_price: number;
   tax_code: string;
   tax_rate: number;
+  dian_product_code: string;
   is_active: boolean;
-}
-
-export interface ProductCreate {
-  sku: string;
-  name: string;
-  base_price: number;
-  tax_code: string;
-  tax_rate: number;
 }
